@@ -67,6 +67,15 @@ def inspect_availability():
             popup.click()
         except Exception:
             pass
+        # Wait passively for the site's own widget; never click, solve or bypass it.
+        print('Step: wait for site verification to finish naturally')
+        try:
+            page.wait_for_function('''() => {
+                const response = document.querySelector('input[name="cf-turnstile-response"]');
+                return !!response && !!response.value;
+            }''', timeout=45000)
+        except Exception:
+            raise PreviewError('VERIFICATION_PENDING: site verification did not complete automatically; manual verification may be required') from None
         page.locator('#ContentPlaceHolder1_loginid').fill(username)
         page.locator('#loginpw').fill(password)
         print('Step: submit login (credentials are not logged)')
