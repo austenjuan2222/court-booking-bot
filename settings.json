@@ -1,0 +1,9 @@
+{
+  "timezone": "Asia/Taipei",
+  "hours": [15, 16],
+  "max_total_twd": 900,
+  "prefer_same_court": true,
+  "allow_different_courts": true,
+  "excluded_booking_dates": ["2026-10-31"],
+  "mode": "preview"
+}
