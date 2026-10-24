@@ -71,7 +71,23 @@ def inspect_availability():
         page.locator('#loginpw').fill(password)
         print('Step: submit login (credentials are not logged)')
         page.locator('#login_but').click()
-        expect(page.get_by_role('link', name='[登出]', exact=True)).to_be_visible()
+        try:
+            expect(page.get_by_role('link', name='[登出]', exact=True)).to_be_visible(timeout=45000)
+        except Exception:
+            if page.locator('#showerror3').is_visible():
+                raise PreviewError('LOGIN_REJECTED: website reports incorrect username or password') from None
+            if page.locator('#LoginMsg').is_visible():
+                raise PreviewError('LOGIN_RATE_LIMITED: website temporarily restricted login') from None
+            verification_failed = page.get_by_text('驗證失敗', exact=True)
+            if verification_failed.count() and verification_failed.first.is_visible():
+                raise PreviewError('VERIFICATION_FAILED: website requires successful verification before login') from None
+            challenge_pending = page.evaluate('''() => {
+                const response = document.querySelector('input[name="cf-turnstile-response"]');
+                return !!document.querySelector('#example-container iframe') && (!response || !response.value);
+            }''')
+            if challenge_pending:
+                raise PreviewError('VERIFICATION_PENDING: cloud browser did not complete site verification') from None
+            raise PreviewError('LOGIN_NOT_CONFIRMED: no authenticated page after 45 seconds') from None
         print('Step: authenticated')
         page.goto(BASE + '?module=net_booking&files=booking_place&PT=13', wait_until='domcontentloaded')
         # Only click an actual offered date. Do not fabricate an out-of-range booking URL.
