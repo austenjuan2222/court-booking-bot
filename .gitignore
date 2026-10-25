@@ -1,3 +1,4 @@
+config.json
 .env
 .env.*
 !.env.example
@@ -5,6 +6,15 @@ __pycache__/
 *.pyc
 *.dpapi
 *.credential.xml
+*.png
+*.jpg
+*.zip
+*.lock
+chrome-profile/
+auth.json
+storage-state*.json
+chrome-last-result.json
+chrome-orders-*.json
+manual-test-orders.json
 playwright-report/
 test-results/
-auth.json

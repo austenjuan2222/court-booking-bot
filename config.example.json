@@ -1,0 +1,33 @@
+{
+  "site": "https://fe.xuanen.com.tw/fe03.aspx?Module=ind&files=ind",
+  "sport": "匹克球",
+  "sport_id": "13",
+  "timezone": "Asia/Taipei",
+  "release_weekday": "Saturday",
+  "release_time": "00:00:00",
+  "days_ahead": 7,
+  "slots": [
+    "15:00-16:00",
+    "16:00-17:00"
+  ],
+  "courts_per_slot": 1,
+  "prefer_same_court": true,
+  "allow_different_courts": true,
+  "notification_email": "you@example.com",
+  "sender_email": "you@example.com",
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": 587,
+  "payment": "manual",
+  "max_total_twd": 900,
+  "excluded_booking_dates": [],
+  "enabled": false,
+  "execution_mode": "local_codex_browser",
+  "auto_login": {
+    "enabled": true,
+    "credential_setup_required": true,
+    "max_attempts_per_run": 1,
+    "module": "auto_login.mjs",
+    "on_verification": "stop_and_email"
+  },
+  "confirmation_module": "confirm_booking.mjs"
+}

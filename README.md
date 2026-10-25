@@ -1,29 +1,60 @@
-# 匹克球雲端自動登入測試版
+# 每週匹克球預約流程
 
-此版本先驗證 GitHub Actions 的 Linux 雲端環境能否自動登入網站、查場及寄信。**不建立預約、不付款，也不是已完成的雲端訂場機器人。** 真正下單流程尚待驗證與實作。原本的本機 Codex 排程尚未遷移或關閉。
+本機 Codex 排程搭配內建瀏覽器、自動登入、訂場確認及 Gmail 待付款通知。網站：<https://fe.xuanen.com.tw/>。
 
-## 設定
+每週六台灣時間00:00開始，訂七天後週六15–16與16–17各一面。同場優先；任一時段沒有空場則不開始訂部分時段，兩小時合計不超過NT$900。兩張訂單分別建立，第二張仍可能因搶場或網站錯誤失敗；不會自動取消第一張。只建立待付款訂單，由使用者於每張訂單建立後10分鐘內付款。
 
-在 austenjuan2222 帳號下新建私人儲存庫 court-booking-bot，將此資料夾內容放在儲存庫根目錄。不要上傳本機 DPAPI 憑證或任何密碼。
+## 已驗證與限制
 
-在 Settings → Secrets and variables → Actions 新增五項 Repository secrets：
+2026/10/25在真實網站完成自動登入、兩個預約確認視窗自動接受、兩筆待付款訂單核對及SMTP接受付款通知。每週排程喚醒時間尚未實測，可能延遲。遇網站人機驗證、額外條款或訂單結果不明時停止並通知，不能保證永遠不需人工。
 
-| 名稱 | 內容 |
-|---|---|
-| COURT_USER | 球場會員登入帳號 |
-| COURT_PASSWORD | 球場網站密碼 |
-| GMAIL_USER | austenjuan2@gmail.com |
-| GMAIL_APP_PASSWORD | Gmail 應用程式密碼 |
-| NOTIFY_EMAIL | austenjuan2@gmail.com |
+**主要流程必須使用本機Codex內建瀏覽器，電腦開機、連網且Codex開啟。這不是上傳GitHub就能自動在雲端訂場的服務。**
 
-然後 Actions → Cloud login and court preview → Run workflow。這次只測試登入、查場與寄信。請勿將密碼填入程式碼、Issue 或聊天。
+儲存庫原本的 `runner.py`、`planner.py`、`settings.json` 與GitHub Actions為早期雲端「只查場」版本，不能建立預約，網站驗證未通過。`chrome_runner.py`為獨立Chrome實驗版本，也未通過真實網站驗證。現行排程不執行這兩個版本，不要將其測試成功當作內建瀏覽器流程結果。
 
-每週排程預設不執行；只有設 repository variable ENABLE_CLOUD_PREVIEW=true 才開始每週查場測試。請先手動測試通過，不必先開排程。GitHub 排程可能延遲，沒有準點搶場保證。這個版本每次執行重新登入，不儲存 cookies 或瀏覽器狀態；若網站需要驗證碼或封鎖雲端 IP，測試會失敗並嘗試寄信通知，不會繞過驗證。
+## 本機設定（Windows）
 
-## 費用
+需要Python、Node.js及支援內建瀏覽器操作的Codex。
 
-使用標準 Ubuntu runner，沒有雲端主機訂閱。私人儲存庫會使用帳號的 Actions 免費額度，若帳號已有其他專案，仍須查看總用量；不能承諾所有情況零費用。請在 GitHub Billing 確認可用額度與支出限制，不啟用付費 runner。
+```powershell
+Copy-Item config.example.json config.json
+python login_credentials.py --setup
+python send_notice.py --setup
+```
 
-## 驗證狀態
+先在 `config.json` 填入寄件Gmail與收件信箱，再執行上述設定。Gmail使用應用程式密碼；輸入均在本機終端機遮蔽，不貼到聊天或GitHub。設定完成、核對預約條件後才把 `enabled` 改成 `true`。
 
-本機已測試同場優先、價格上限、排除已訂場地與不訂部分時段的規則。五項雲端 Secrets 已設定，已執行三次雲端登入測試。Gmail 失敗通知成功；網站登入驗證未能在雲端自動完成（最後一次被動等待45秒仍無結果），所以雲端登入與查場尚未通過。每週雲端測試未啟用，沒有建立預約。詳見 CLOUD-TEST-RESULT.md。網站登入欄位與查場清單來自實際觀察。請以雲端測試結果判斷能否繼續做無人訂場，不能用本機登入成功推定雲端也成功。
+球場及Gmail憑證透過Windows目前使用者DPAPI加密，保存在 `%LOCALAPPDATA%/XuanenCourtBot/`，不在儲存庫。換電腦或Windows使用者要重新設定。既有已設定電腦不需重設，也不要覆蓋其config.json。
+
+## 執行方式
+
+完整流程在 [WORKFLOW.md](WORKFLOW.md)，排程設定範本在 [SCHEDULER.md](SCHEDULER.md)。排程屬於Codex本機設定，不會因clone儲存庫自動建立。
+
+`auto_login.mjs`、`confirm_booking.mjs`必須從Codex瀏覽器JavaScript工具匯入，傳入受支援的tab物件；不是直接以Node啟動即可訂場。不得讀出或列印帳密。
+
+確認視窗的關鍵：點擊和接收 `getJsDialog()` 必須並行，不能先等待click結束再處理確認。模組只點一次，回傳已接受確認後還須等待成功頁，再核對我的訂單。
+
+## 測試
+
+```powershell
+node --test test_auto_login.mjs test_confirm_booking.mjs
+```
+
+11項主要模組測試，涵蓋錯誤網域、登入失敗清空、不重試、並行確認及價格/頁面核對。測試使用合成資料，不連球場、不寄信、不建立預約。
+
+獨立Chrome實驗另有7項測試（需安裝requirements及本機Chrome）：
+
+```powershell
+python -m pip install -r requirements.txt
+python -m unittest test_chrome_runner.py -v
+```
+
+## 檔案
+
+- `config.example.json`：無個人資料的設定範本。
+- `login_credentials.py`、`auto_login.mjs`：加密保存及自動登入。
+- `confirm_booking.mjs`：核對場號時段及原生確認視窗。
+- `core.py`、`send_notice.py`：配對、時區及Gmail通知。
+- `WORKFLOW.md`、`SCHEDULER.md`：網站完整流程與本機排程範本。
+
+不提交本機config、憑證、cookies、瀏覽器設定檔、訂單紀錄、個人截圖或追蹤資料。
